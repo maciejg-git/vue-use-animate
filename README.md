@@ -18,7 +18,7 @@ animate.play();
 
 ## Properties of the animate object
 
-- set: defines animation 
+- `set`: defines animation 
 
 ```javascript
 {
@@ -31,7 +31,7 @@ animate.play();
 
 `draw` function that should modify the style property of the animating element.
 
-- play: plays animation
-- stop: stop animation
-- pause: pauses animation. Resume it by calling play.
-- destroy: stops and cancels any pending `requestAnimationFrame` (it simply calls stop)
+- `play`: plays animation
+- `stop`: stop animation
+- `pause`: pauses animation. Resume it by calling play.
+- `destroy`: stops and cancels any pending `requestAnimationFrame` (it simply calls stop)
