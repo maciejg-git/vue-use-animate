@@ -5,6 +5,9 @@ vue-use-animate is a simple wrapper for `requestAnimationFrame`.
 - play, stop, pause and restart animations
 - specify duration and delay of the animations
 - support for easing functions
+- repeat animations
+- reverse, alternate and alternate-reverse mode
+- remap default `0` to `1` range of progess to any range
 - specify single animation or an array of the animations that have different settings but run in the same `requestAnimationFrame`
 
 ```javascript
@@ -38,6 +41,12 @@ animate.set({
 `timing` function takes one argument that is the current progress of the animation in a range from `0` to `1`. You can use it to add additional effects like easing.
 
 `draw` function takes one argument that is the value returned from `timing` function. This value is used to modify the style property of the animated element.
+
+`repeat`: if true animation will restart after a duration.
+
+`direction`: one of `normal`, `reverse`, `alternate` or `alternate-reverse`.
+
+`remap` is an two element array that defines final min and max values of the progress. The default is a range from `0` to `1`.
 
 - `play`: plays animation
 - `stop`: stop animation
