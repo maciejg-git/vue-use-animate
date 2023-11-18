@@ -24,6 +24,10 @@ animate.set({
 animate.play();
 ```
 
+Check it in the playground
+
+[https://stackblitz.com/edit/vue-s7xnco?file=src%2FApp.vue](https://stackblitz.com/edit/vue-s7xnco?file=src%2FApp.vue)
+
 ## Properties of the animate object
 
 - `set`: defines animation 
