@@ -4,18 +4,21 @@ let steps = (t, s) =>
   Math.ceil(Math.min(Math.max(t, 0.000001), 1) * s) * (1 / s);
 let promise = (i) => new Promise((res) => (i.resolve = res));
 
-let defaultTrack = {
-  startTime: 0,
-  frameIndex: 0,
-  reverse: false,
-  cycles: 0,
-  elapsed: 0,
-  _nextFrame: false,
-  _trackComplete: false,
-  _isFrameComplete: true,
-  next() {
-    this._nextFrame = true;
-  },
+let getDefaultTrack = (animation, index) => {
+   return {
+    startTime: 0,
+    frameIndex: 0,
+     trackIndex: index,
+    reverse: animation._isReverse,
+    cycles: 0,
+    elapsed: 0,
+    _nextFrame: false,
+    _trackComplete: false,
+    _isFrameComplete: true,
+    next() {
+      this._nextFrame = true;
+    },
+  };
 }
 
 let defaultState = {
@@ -34,10 +37,12 @@ let defaultState = {
     );
   },
   isAllComplete() {
-    return this._isAllComplete
+    return this._isAllComplete;
   },
   isAllTrackComplete(track) {
-    return track !== undefined ? this._tracks[track]._isFrameComplete : this.track._isFrameComplete
+    return track !== undefined
+      ? this._tracks[track]._isFrameComplete
+      : this.track._isFrameComplete;
   },
   getTimeFraction(offset = 0) {
     // if (offset < 0) offset = 0;
@@ -48,31 +53,36 @@ let defaultState = {
     return timeFraction;
   },
   update(track, offset = 0) {
-    this.track = this._tracks[track]
-    this.frameIndex = this._tracks[track].frameIndex
-    this.frame = this._frames[track][this.frameIndex]
+    this.track = this._tracks[track];
+    this.frameIndex = this._tracks[track].frameIndex;
+    this.frame = this._frames[track][this.frameIndex];
 
     this.timeFraction = this.getTimeFraction(offset);
     this.progress = this.getProgress();
 
-    this.track._isFrameComplete = !this.isComplete() ? false : this.track._isFrameComplete
-    this._isAllComplete = !this.isComplete() ? false : this._isAllComplete
+    this.track._isFrameComplete = !this.isComplete()
+      ? false
+      : this.track._isFrameComplete;
+    this._isAllComplete = !this.isComplete() ? false : this._isAllComplete;
   },
   next(track) {
-    this._tracks[track].next()
+    this._tracks[track].next();
   },
   setTiming(timing) {
     this.timing = timing;
   },
   setRemap(remap) {
-    this.remap = remap
+    this.remap = remap;
+  },
+  setReverse(reverse) {
+    this.reverse = reverse;
   },
   getProgress() {
     let progress = this.timeFraction;
-    if (this.timing) progress = this.timing(this.timeFraction)
-    else if (this.frame.timing) progress = this.frame.timing(this.timeFraction)
-    if (this.remap) progress = remap(progress, this.remap)
-    else if (this.frame.remap) progress = remap(progress, this.frame.remap)
+    if (this.timing) progress = this.timing(this.timeFraction);
+    else if (this.frame.timing) progress = this.frame.timing(this.timeFraction);
+    if (this.remap) progress = remap(progress, this.remap);
+    else if (this.frame.remap) progress = remap(progress, this.frame.remap);
     return progress;
   },
 };
@@ -96,8 +106,8 @@ export default function useAnimate() {
     animations.forEach((animation) => {
       cancelAnimationFrame(animation.reqId);
       animation._tracks.forEach((t, index, arr) => {
-        arr[index] = { ...defaultTrack, trackIndex: index, reverse: animation._isReverse }
-      })
+        arr[index] = getDefaultTrack(animation, index)
+      });
     });
   };
 
@@ -118,26 +128,27 @@ export default function useAnimate() {
           i.direction === "alternate" || i.direction === "alternate-reverse";
         i._isReverse =
           i.direction === "reverse" || i.direction === "alternate-reverse";
-        i.repeat = i.repeat === true ? 9999999 : +i.repeat;
+        // i.repeat = i.repeat === true ? 9999999 : +i.repeat;
         if (Array.isArray(i?.frames)) {
-        i._frames = i.frames.map((t) => {
-          return t.map((f) => {
-          if (!f.duration) f.duration = 0;
-          if (!f.timing) f.timing = i.timing ?? ((i) => i);
-          if (!f.remap) f.remap = i.remap ?? null;
-          if (!f.reverse) f.reverse = false;
-          if (!f.delay) f.delay = 0;
-          return f;
-        })
-        });
-        i._tracks = Array.from({ length: i._frames.length }).map((t, index) => {
-          t = { ...defaultTrack, trackIndex: index, reverse: i._isReverse };
-          return t
-        })
+          i._frames = i.frames.map((t) => {
+            return t.map((f) => {
+              return {
+                duration: f.duration ?? 0,
+                timing: f.timing ?? i.timing ?? ((i) => i),
+                remap: f.remap ?? i.remap ?? null,
+                reverse: f.reverse ?? false,
+                repeat: f.repeat ?? i.repeat ?? false,
+                delay: f.delay ?? 0,
+              }
+            });
+          });
+          i._tracks = Array.from({ length: i._frames.length })
+          i._tracks = i._tracks.map((t, index) => getDefaultTrack(i, index));
         }
-        i.state = { ...defaultState, _tracks: i._tracks, _frames: i._frames }
+        i.state = { ...defaultState, _tracks: i._tracks, _frames: i._frames };
         return i;
       });
+    console.log(animations)
   };
 
   let destroy = () => stop();
@@ -149,46 +160,48 @@ export default function useAnimate() {
       let continueAnimation = false;
       time -= pausedOffset;
       for (let track of _tracks) {
-      if (state._trackComplete) continue
-        if (!track.startTime) track.startTime = time
-      track.elapsed = time - track.startTime;
+        if (state._trackComplete) continue;
+        if (!track.startTime) track.startTime = time;
+        track.elapsed = time - track.startTime;
 
-      state._isAllComplete = true
-      track._isFrameComplete = true
+        state._isAllComplete = true;
+        track._isFrameComplete = true;
       }
-        animation.draw(state);
+
+      animation.draw(state);
 
       for (let track of _tracks) {
-        if (track._trackComplete) continue
-      if (!track._nextFrame) {
-        continueAnimation = true
-        continue
-      }
+        if (track._trackComplete) continue;
+        if (!track._nextFrame) {
+          continueAnimation = true;
+          continue;
+        }
         track._nextFrame = false;
-        // if (animation.afterFrame) animation.afterFrame(state.frameIndex, state);
-        if (animation.afterFrame) animation.afterFrame(state);
+        // if (animation.afterFrame) animation.afterFrame(state);
         if (track.frameIndex + 1 < _frames[track.trackIndex].length) {
-          track.frameIndex++
-          track.startTime = time
+          track.frameIndex++;
+          track.startTime = time;
+          track.frame = _frames[track.trackIndex][track.frameIndex]
           continueAnimation = true;
         } else {
           if (animation.repeat) {
             track.frameIndex = 0;
-            track.startTime = time
+            track.startTime = time;
             track.cycles++;
             if (_isAlternate) {
               track.reverse = (track.cycles + _isReverse) % 2;
             }
             continueAnimation = true;
           } else {
-            track._trackComplete = true
+            track._trackComplete = true;
           }
+          if (animation.afterTrack) animation.afterTrack(state)
         }
       }
 
       if (continueAnimation) animation.reqId = requestAnimationFrame(step);
       else if (animation.finished) animation.finished();
-    }
+    };
     animation.reqId = requestAnimationFrame(step);
   };
 
