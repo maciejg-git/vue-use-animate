@@ -21,6 +21,14 @@ let getDefaultTrack = (animation, index) => {
   };
 }
 
+let defaultEvents = {
+  initialDraw: false,
+  trackStarted: [],
+  trackCompleted: [],
+  trackFrameChanged: [],
+  animationCompleted: false,
+}
+
 let defaultState = {
   timeFraction: 0,
   progress: 0,
@@ -30,6 +38,7 @@ let defaultState = {
   remap: null,
   _trackComplete: false,
   _isAllComplete: true,
+  _store: {},
   isComplete() {
     return (
       ((this.reverse || this.frame.reverse) && this.timeFraction === 0) ||
@@ -76,6 +85,12 @@ let defaultState = {
   },
   setReverse(reverse) {
     this.reverse = reverse;
+  },
+  addTransform(name, value) {
+    this._store[name] = value
+  },
+  getTransform(name) {
+    return this._store[name] || ""
   },
   getProgress() {
     let progress = this.timeFraction;
@@ -137,7 +152,7 @@ export default function useAnimate() {
                 timing: f.timing ?? i.timing ?? ((i) => i),
                 remap: f.remap ?? i.remap ?? null,
                 reverse: f.reverse ?? false,
-                repeat: f.repeat ?? i.repeat ?? false,
+                repeat: f.repeat ?? false,
                 delay: f.delay ?? 0,
               }
             });
@@ -148,7 +163,7 @@ export default function useAnimate() {
         i.state = { ...defaultState, _tracks: i._tracks, _frames: i._frames };
         return i;
       });
-    console.log(animations)
+    animations.forEach((i) => i.draw(i.state))
   };
 
   let destroy = () => stop();
@@ -181,7 +196,6 @@ export default function useAnimate() {
         if (track.frameIndex + 1 < _frames[track.trackIndex].length) {
           track.frameIndex++;
           track.startTime = time;
-          track.frame = _frames[track.trackIndex][track.frameIndex]
           continueAnimation = true;
         } else {
           if (animation.repeat) {
