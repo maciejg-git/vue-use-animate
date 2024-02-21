@@ -87,13 +87,6 @@ let getDefaultTrack = (frames, index, animation) => {
       this.reverse = reverse;
       return this;
     },
-    addTransform(t) {
-      this._transforms[t] = this.progress;
-      this["$" + t] = this.progress
-    },
-    getTransform(t) {
-      return this._transforms[t];
-    },
   };
 };
 
@@ -225,6 +218,7 @@ export default function useAnimate() {
           onAfterFrame(track);
           setFrame(track, 0);
           track.trackStarted = true;
+          track.frameStarted = true;
           track.cycles++;
           // if (_isAlternate) {
           //   track.reverse = (track.cycles + _isReverse) % 2;
