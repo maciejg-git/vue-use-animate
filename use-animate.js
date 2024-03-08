@@ -2,7 +2,7 @@ let remap = (v, range) => (v * (range[1] - range[0])) / 1 + range[0];
 let clamp = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 let steps = (t, s) =>
   Math.ceil(Math.min(Math.max(t, 0.000001), 1) * s) * (1 / s);
-let promise = (i) => new Promise((res) => (i.resolve = res));
+let getRandomInt = (min, max) => Math.random() * (max - min) + min 
 
 let defaultAnimationEvents = {
   initialDraw: false,
@@ -14,11 +14,12 @@ let defaultTrackEvents = {
   trackStarted: false,
 };
 
-let getDefaultTrack = (frames, index, animation) => {
+let getDefaultTrack = (frames, index) => {
   return {
     startTime: 0,
     elapsed: 0,
     timeFraction: 0,
+    _timeFraction: 0,
     progress: 0,
     frameIndex: 0,
     trackIndex: index,
@@ -28,11 +29,9 @@ let getDefaultTrack = (frames, index, animation) => {
     _nextFrame: false,
     _repeatFrame: false,
     _trackComplete: false,
-    _isAllComplete: true,
+    _isAllComplete: false,
     _frames: frames[index],
-    _transforms: {},
     ...defaultTrackEvents,
-    animation,
     next() {
       this._nextFrame = true;
     },
@@ -52,6 +51,7 @@ let getDefaultTrack = (frames, index, animation) => {
       let timeFraction =
         (this.elapsed - offset - this.frame.delay) / this.frame.duration;
       timeFraction = clamp(timeFraction);
+      this._timeFraction = timeFraction
       if (this.reverse ?? this.frame._reverse) timeFraction = 1 - timeFraction;
       return timeFraction;
     },
@@ -66,9 +66,13 @@ let getDefaultTrack = (frames, index, animation) => {
     getProgress() {
       let progress = this.timeFraction;
 
-      if (this.timing) progress = this.timing(this.timeFraction);
-      else if (this.frame.timing)
-        progress = this.frame.timing(this.timeFraction);
+      if (this.timing) {
+        progress = this.timing(this._timeFraction);
+        if (this.reverse ?? this.frame._reverse) progress = 1 - progress;
+      } else if (this.frame.timing) {
+        progress = this.frame.timing(this._timeFraction);
+        if (this.reverse ?? this.frame._reverse) progress = 1 - progress;
+      }
 
       if (this.remap) progress = remap(progress, this.remap);
       else if (this.frame.remap) progress = remap(progress, this.frame.remap);
@@ -119,8 +123,17 @@ export default function useAnimate() {
     cancelAnimationFrame(reqId)
     _tracks.forEach((t, index, arr) => {
       arr[index] = getDefaultTrack(_frames, index)
+      arr[index]._frames.forEach((frame) => {
+        frame.cycles = 0
+        frame._reverse = frame.isReverse
+      })
     })
   };
+
+  let restart = () => {
+    if (state !== "stop") stop()
+    play()
+  }
 
   let pause = () => {
     if (state === "pause" || state === "stop") return;
@@ -139,31 +152,30 @@ export default function useAnimate() {
             remap: f.remap ?? animation.remap ?? null,
             isReverse: f.reverse ?? false,
             isAlternate: f.alternate ?? false,
-            repeat: f.repeat ?? false,
             delay: f.delay ?? 0,
             _reverse: f.reverse ?? false,
-            _cycles: 0,
+            cycles: 0,
           };
         });
       });
       _tracks = Array.from({ length: _frames.length });
-      _tracks = _tracks.map((t, index) => getDefaultTrack(_frames, index, animationEvents));
+      _tracks = _tracks.map((t, index) => getDefaultTrack(_frames, index));
     }
     timing = animation.timing || ((i) => i);
     repeat = animation.repeat ?? false;
     draw = typeof animation.draw === "function" ? animation.draw : null;
 
     animationEvents.initialDraw = true;
-    draw && draw(_tracks);
+    draw && draw(_tracks, animationEvents);
     animationEvents.initialDraw = false;
   };
 
   let destroy = () => stop();
 
   let onAfterFrame = (track) => {
-    track.frame._cycles++;
+    track.frame.cycles++;
     if (track.frame.isAlternate) {
-      track.frame._reverse = (track.frame._cycles + track.frame.isReverse) % 2;
+      track.frame._reverse = (track.frame.cycles + track.frame.isReverse) % 2;
     }
   };
 
@@ -193,7 +205,7 @@ export default function useAnimate() {
       track._nextFrame = false;
     }
 
-    draw(_tracks);
+    draw(_tracks, animationEvents);
 
     for (let track of _tracks) {
       resetEvents(track);
@@ -238,8 +250,10 @@ export default function useAnimate() {
     play,
     stop,
     pause,
+    restart,
     set,
     destroy,
     steps,
+    getRandomInt,
   };
 }
